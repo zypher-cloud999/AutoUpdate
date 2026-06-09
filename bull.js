@@ -1,3 +1,4 @@
+//NEW UPDATE
 const {
   default: makeWASocket,
   useMultiFileAuthState,
