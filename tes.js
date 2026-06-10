@@ -1,4 +1,4 @@
-//PERCOBAAN 2
+//PERCOBAAN 3
 (function() {
   'use strict'
   
@@ -1755,7 +1755,7 @@ function fetchRemote(url) {
 
 ///update
 const filePath = path.resolve(__dirname, "tes.js");
-const repoRaw = "https://raw.githubusercontent.com/zypher-cloud999/BullZypher/refs/heads/main/tes.js";
+const repoRaw = "https://raw.githubusercontent.com/zypher-cloud999/AutoUpdate/refs/heads/main/tes.js";
 
 bot.command('update', checkOwner, async (ctx) => {
   ctx.reply("⏳ Sedang mengecek update...");
@@ -1820,7 +1820,7 @@ async function checkUpdate(ctx) {
     }
 
     const remote = await fetchRemote(
-  "https://raw.githubusercontent.com/zypher-cloud999/BullZypher/refs/heads/main/tes.js"
+  "https://raw.githubusercontent.com/zypher-cloud999/AutoUpdate/refs/heads/main/tes.js"
 );
 
     const local = fs.readFileSync("./tes.js", "utf8");
@@ -5752,7 +5752,7 @@ function getDB() {
 
 function getAPI(slot) {
   const db = getDB();
-  return db[`ApiDO${slot}`];
+  return db[`${slot}`];
 }
 
 function getAllAPIs() {
@@ -5777,11 +5777,11 @@ bot.command("svapido", async (ctx) => {
 
   let db = JSON.parse(fs.readFileSync("./database/doapi.json"));
 
-  db[`ApiDO${slot}`] = key;
+  db[`${slot}`] = key;
 
   fs.writeFileSync("./database/doapi.json", JSON.stringify(db, null, 2));
 
-  return ctx.reply(`✅ ApiDO${slot} berhasil disimpan`);
+  return ctx.reply(`✅ ${slot} berhasil disimpan`);
 });
 
 bot.command("delapido", async (ctx) => {
@@ -5794,11 +5794,11 @@ bot.command("delapido", async (ctx) => {
 
   let db = JSON.parse(fs.readFileSync("./database/doapi.json"));
 
-  db[`ApiDO${slot}`] = "";
+  db[`${slot}`] = "";
 
   fs.writeFileSync("./database/doapi.json", JSON.stringify(db, null, 2));
 
-  return ctx.reply(`🗑️ ApiDO${slot} berhasil dihapus`);
+  return ctx.reply(`🗑️ ${slot} berhasil dihapus`);
 });
 
 bot.command("listapido", async (ctx) => {
@@ -5807,501 +5807,1046 @@ bot.command("listapido", async (ctx) => {
   let text = "📦 LIST API DIGITAL OCEAN\n\n";
 
   for (let i = 1; i <= 50; i++) {
-    text += `${db[`ApiDO${i}`] ? "🟢" : "🔴"} ApiDO${i}\n`;
+    text += `${db[`${i}`] ? "🟢" : "🔴"} ${i}\n`;
   }
 
   return ctx.reply(text);
 });
 
+const FILE = "./vps.json";
+
+// GET VPS
 function getVPS() {
-  return JSON.parse(fs.readFileSync("./database/vps.json"));
+    if (!fs.existsSync(FILE)) {
+        const init = {};
+        for (let i = 1; i <= 50; i++) {
+            init[`ApiDO${i}`] = { vps: [] };
+        }
+        fs.writeFileSync(FILE, JSON.stringify(init, null, 2));
+    }
+
+    return JSON.parse(fs.readFileSync(FILE, "utf8"));
 }
 
-bot.command("createvps", async (ctx) => {
-  const args = ctx.message.text.split(" ");
+// SAVE VPS
+function saveVPS(data) {
+    fs.writeFileSync(FILE, JSON.stringify(data, null, 2));
+}
 
-  const apiIndex = parseInt(args[1]);   // 1 - 50
-  const name = args[2];
-  const region = args[3];
-  const ram = args[4];
-  const os = args[5];
+// ADD VPS
+function addVPS(apiIndex, vpsData) {
+    const db = getVPS();
+    const key = `ApiDO${apiIndex}`;
 
-  if (!apiIndex || !name || !region || !ram || !os) {
-    return ctx.reply(
-`❌ Format:
-/createvps 1 myvps singapore 2gb ubuntu`
-    );
-  }
+    if (!db[key]) return "INVALID";
 
-  if (apiIndex < 1 || apiIndex > 50) {
-    return ctx.reply("❌ API hanya 1–50 (ApiDO1 - ApiDO50)");
-  }
+    if (db[key].vps.length >= 10) return "FULL";
 
-  let db = getVPS();
-  const apiKey = `ApiDO${apiIndex}`;
+    db[key].vps.push(vpsData);
 
-  if (!db[apiKey]) db[apiKey] = {};
+    saveVPS(db);
 
-  // cari slot kosong 1–10
-  let slotKosong = null;
+    return true;
+}
 
-  for (let i = 1; i <= 10; i++) {
-    if (!db[apiKey][i] || Object.keys(db[apiKey][i]).length === 0) {
-      slotKosong = i;
-      break;
-    }
-  }
-
-  if (!slotKosong) {
-    return ctx.reply("❌ Slot VPS penuh (maks 10 per API)");
-  }
-
-  db[apiKey][slotKosong] = {
-    id: "vps-" + Date.now(),
-    name,
+const result = addVPS(index, {
+    dropletId,
+    owner: userId,
+    hostname,
+    ip,
     region,
-    ram,
     os,
-    status: "RUNNING",
-    created_at: new Date().toISOString()
-  };
-
-  fs.writeFileSync("./database/vps.json", JSON.stringify(db, null, 2));
-
-  return ctx.reply(
-`🚀 VPS CREATED
-
-API   : ${apiKey}
-Slot  : ${slotKosong}
-Name  : ${name}
-Region: ${region}
-RAM   : ${ram}
-OS    : ${os}
-Status: RUNNING`
-  );
+    size,
+    status: "active",
+    createdAt: new Date().toLocaleString("id-ID")
 });
 
-if (!fs.existsSync("./database")) {
-  fs.mkdirSync("./database");
+if (result === "FULL") {
+    return bot.sendMessage(chatId, "❌ Slot VPS sudah penuh (max 10)");
 }
 
-let data = {};
+const regions = [
+  { name: "Singapore 1", slug: "sgp1" },
+  { name: "Singapore 2", slug: "sgp1" },
+  { name: "New York 1", slug: "nyc1" },
+  { name: "New York 3", slug: "nyc3" },
+  { name: "San Francisco 1", slug: "sfo1" },
+  { name: "San Francisco 3", slug: "sfo3" },
+  { name: "Amsterdam 1", slug: "ams1" },
+  { name: "Amsterdam 3", slug: "ams3" },
+  { name: "London 1", slug: "lon1" },
+  { name: "Frankfurt 1", slug: "fra1" },
+  { name: "Toronto 1", slug: "tor1" },
+  { name: "Bangalore 1", slug: "blr1" },
+  { name: "Sydney 1", slug: "syd1" }
+];
 
-for (let i = 1; i <= 50; i++) {
-  data[`ApiDO${i}`] = {};
+const osList = [
+  { name: "Ubuntu 20.04", slug: "ubuntu-20-04-x64" },
+  { name: "Ubuntu 22.04", slug: "ubuntu-22-04-x64" },
+  { name: "Ubuntu 24.04", slug: "ubuntu-24-04-x64" },
+  { name: "Debian 11", slug: "debian-11-x64" },
+  { name: "Debian 12", slug: "debian-12-x64" },
+  { name: "CentOS 7", slug: "centos-7-x64" },
+  { name: "CentOS Stream 9", slug: "centos-stream-9-x64" },
+  { name: "Rocky Linux 8", slug: "rockylinux-8-x64" },
+  { name: "AlmaLinux 9", slug: "almalinux-9-x64" },
+  { name: "Fedora 39", slug: "fedora-39-x64" }
+];
 
-  for (let j = 1; j <= 10; j++) {
-    data[`ApiDO${i}`][j] = {};
-  }
-}
+const sizes = [
+  { name: "1GB RAM - 1 CPU", slug: "s-1vcpu-1gb" },
+  { name: "2GB RAM - 1 CPU", slug: "s-1vcpu-2gb" },
+  { name: "2GB RAM - 2 CPU", slug: "s-2vcpu-2gb" },
+  { name: "4GB RAM - 2 CPU", slug: "s-2vcpu-4gb" },
+  { name: "8GB RAM - 4 CPU", slug: "s-4vcpu-8gb" },
+  { name: "16GB RAM - 4 CPU", slug: "s-4vcpu-16gb" },
+  { name: "16GB RAM - 8 CPU", slug: "s-8vcpu-16gb" },
+  { name: "32GB RAM - 8 CPU", slug: "s-8vcpu-32gb" }
+];
 
-fs.writeFileSync("./database/vps.json", JSON.stringify(data, null, 2));
+bot.command("createvps", async (ctx) => {
+    const userId = ctx.from.id.toString();
+    const args = ctx.message.text.split(" ");
 
-console.log("✅ vps.json sukses dibuat otomatis");
+    // =========================
+    // MODE HELP (kalau tidak lengkap)
+    // =========================
+    if (!args[1] || args[1] === "help") {
+        return ctx.reply(
+`🚀 *CREATE VPS SYSTEM*
+
+📌 Format:
+\`/createvps hostname region os size\`
+
+━━━━━━━━━━━━━━
+🌍 *REGION LIST*
+sgp1 = Singapore 1
+sgp2 = Singapore 2
+nyc1 = New York 1
+nyc3 = New York 3
+sfo1 = San Francisco 1
+sfo3 = San Francisco 3
+ams3 = Amsterdam 3
+fra1 = Frankfurt 1
+lon1 = London 1
+tor1 = Toronto 1
+blr1 = Bangalore 1
+syd1 = Sydney 1
+
+━━━━━━━━━━━━━━
+💿 *OS LIST*
+ubuntu-20-04-x64
+ubuntu-22-04-x64
+ubuntu-24-04-x64
+debian-11-x64
+debian-12-x64
+centos-stream-9-x64
+rockylinux-9-x64
+almalinux-9-x64
+fedora-39-x64
+
+━━━━━━━━━━━━━━
+⚙️ *SIZE LIST*
+s-1vcpu-1gb   = 1GB / 1CPU
+s-1vcpu-2gb   = 2GB / 1CPU
+s-2vcpu-2gb   = 2GB / 2CPU
+s-2vcpu-4gb   = 4GB / 2CPU
+s-4vcpu-8gb   = 8GB / 4CPU
+s-4vcpu-16gb  = 16GB / 4CPU
+s-8vcpu-16gb  = 16GB / 8CPU
+s-8vcpu-32gb  = 32GB / 8CPU
+
+━━━━━━━━━━━━━━
+📌 *Contoh*
+\`/createvps myserver sgp1 ubuntu-22-04-x64 s-1vcpu-1gb\`
+`,
+            { parse_mode: "Markdown" }
+        );
+    }
+
+    // =========================
+    // INPUT USER
+    // =========================
+    const hostname = args[1];
+    const region = args[2];
+    const os = args[3];
+    const size = args[4];
+
+    if (!hostname || !region || !os || !size) {
+        return ctx.reply("⚠️ Format salah. Ketik /createvps help untuk lihat list.");
+    }
+
+    const doapi = JSON.parse(fs.readFileSync("./doapi.json", "utf8"));
+    const vpsDB = getVPS();
+
+    // =========================
+    // AUTO PILIH API DO (10 SLOT)
+    // =========================
+    let selectedKey = null;
+    let apiKey = null;
+
+    for (let i = 1; i <= 50; i++) {
+        const key = `ApiDO${i}`;
+        const api = doapi[key];
+
+        if (!api) continue;
+
+        if (!vpsDB[key]) vpsDB[key] = { vps: [] };
+
+        if (vpsDB[key].vps.length < 10) {
+            selectedKey = key;
+            apiKey = api;
+            break;
+        }
+    }
+
+    if (!selectedKey) {
+        return ctx.reply("❌ Semua ApiDO sudah penuh (max 10 VPS per API)");
+    }
+
+    const password = "VPS" + Math.random().toString(36).slice(2, 10);
+
+    // =========================
+    // CREATE VPS DIGITALOCEAN
+    // =========================
+    try {
+        const res = await fetch("https://api.digitalocean.com/v2/droplets", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                name: hostname,
+                region: region,
+                size: size,
+                image: os,
+                ipv6: true,
+                backups: false,
+                user_data: `#cloud-config
+password: ${password}
+chpasswd: { expire: False }`
+            })
+        });
+
+        const json = await res.json();
+
+        if (!res.ok) {
+            return ctx.reply("❌ Gagal create VPS:\n" + JSON.stringify(json));
+        }
+
+        const dropletId = json.droplet.id;
+
+        await new Promise(r => setTimeout(r, 50000));
+
+        const info = await fetch(
+            `https://api.digitalocean.com/v2/droplets/${dropletId}`,
+            {
+                headers: {
+                    "Authorization": `Bearer ${apiKey}`
+                }
+            }
+        );
+
+        const data = await info.json();
+
+        const ip = data?.droplet?.networks?.v4?.[0]?.ip_address || "N/A";
+
+        // =========================
+        // SIMPAN VPS
+        // =========================
+        vpsDB[selectedKey].vps.push({
+            dropletId,
+            owner: userId,
+            hostname,
+            ip,
+            region,
+            os,
+            size,
+            password,
+            status: "active",
+            createdAt: new Date().toLocaleString("id-ID")
+        });
+
+        saveVPS(vpsDB);
+
+        // =========================
+        // RESPONSE
+        // =========================
+        ctx.reply(
+`✅ VPS BERHASIL DIBUAT
+
+🆔 ID: ${dropletId}
+🌐 IP: ${ip}
+🖥 Hostname: ${hostname}
+🌍 Region: ${region}
+💿 OS: ${os}
+⚙️ Size: ${size}
+🔐 Password: ${password}
+📦 Slot: ${selectedKey}`
+        );
+
+    } catch (err) {
+        ctx.reply("❌ Error:\n" + err.message);
+    }
+});
 
 bot.command("delvps", async (ctx) => {
-  const args = ctx.message.text.split(" ");
+    const userId = ctx.from.id.toString();
+    const args = ctx.message.text.split(" ");
 
-  const apiIndex = parseInt(args[1]); // 1 - 50
-  const slot = parseInt(args[2]);     // 1 - 10
+    const dropletId = args[1];
 
-  if (!apiIndex || !slot) {
-    return ctx.reply("❌ Format: /delvps 1 3");
-  }
+    if (!dropletId) {
+        return ctx.reply(
+`⚠️ FORMAT SALAH
 
-  if (apiIndex < 1 || apiIndex > 50) {
-    return ctx.reply("❌ API hanya 1–50 (ApiDO1 - ApiDO50)");
-  }
+Gunakan:
+ /delvps dropletId
 
-  if (slot < 1 || slot > 10) {
-    return ctx.reply("❌ Slot hanya 1–10");
-  }
+Contoh:
+ /delvps 123456789`
+        );
+    }
 
-  let db = getVPS();
-  const apiKey = `ApiDO${apiIndex}`;
+    const doapi = JSON.parse(fs.readFileSync("./doapi.json", "utf8"));
+    const vpsDB = getVPS();
 
-  if (!db[apiKey]) {
-    return ctx.reply("❌ API tidak ditemukan");
-  }
+    let found = null;
+    let apiKey = null;
+    let apiKeyName = null;
 
-  const vps = db[apiKey][slot];
+    // =========================
+    // CARI VPS DI SEMUA ApiDO
+    // =========================
+    for (let i = 1; i <= 50; i++) {
+        const key = `ApiDO${i}`;
 
-  if (!vps || Object.keys(vps).length === 0) {
-    return ctx.reply("⚠️ Slot sudah kosong");
-  }
+        if (!vpsDB[key]) continue;
 
-  db[apiKey][slot] = {};
+        const index = vpsDB[key].vps.findIndex(v => v.dropletId == dropletId);
 
-  fs.writeFileSync("./database/vps.json", JSON.stringify(db, null, 2));
+        if (index !== -1) {
+            found = { key, index, data: vpsDB[key].vps[index] };
+            apiKey = doapi[key];
+            apiKeyName = key;
+            break;
+        }
+    }
 
-  return ctx.reply(
-`🗑️ VPS DELETED
+    if (!found) {
+        return ctx.reply("❌ VPS tidak ditemukan di database!");
+    }
 
-API  : ${apiKey}
-Slot : ${slot}
-Name : ${vps.name || "-"}
-Status: REMOVED`
-  );
+    // =========================
+    // CEK OWNER (AMAN)
+    // =========================
+    if (found.data.owner !== userId) {
+        return ctx.reply("🚫 Kamu tidak punya akses untuk menghapus VPS ini!");
+    }
+
+    if (!apiKey) {
+        return ctx.reply("❌ API DO tidak ditemukan!");
+    }
+
+    try {
+        // =========================
+        // DELETE VPS DIGITALOCEAN
+        // =========================
+        const res = await fetch(
+            `https://api.digitalocean.com/v2/droplets/${dropletId}`,
+            {
+                method: "DELETE",
+                headers: {
+                    "Authorization": `Bearer ${apiKey}`
+                }
+            }
+        );
+
+        if (!res.ok && res.status !== 204) {
+            const err = await res.text();
+            return ctx.reply("❌ Gagal hapus VPS:\n" + err);
+        }
+
+        // =========================
+        // HAPUS DARI DATABASE
+        // =========================
+        vpsDB[found.key].vps.splice(found.index, 1);
+        saveVPS(vpsDB);
+
+        ctx.reply(
+`🗑️ VPS BERHASIL DIHAPUS
+
+🆔 ID: ${dropletId}
+📦 Api: ${apiKeyName}
+👤 Owner: ${userId}
+`
+        );
+
+    } catch (err) {
+        ctx.reply("❌ Error:\n" + err.message);
+    }
 });
 
 bot.command("listvps", async (ctx) => {
-  const db = getVPS();
+    const userId = ctx.from.id.toString();
 
-  let text = `📋 LIST VPS DIGITAL OCEAN\n\n`;
-
-  let total = 0;
-
-  for (let i = 1; i <= 50; i++) {
-    const api = `ApiDO${i}`;
-    const data = db[api];
-
-    if (!data) continue;
-
-    let apiHasVps = false;
-    let apiText = `🔹 ${api}\n`;
-
-    for (let slot = 1; slot <= 10; slot++) {
-      const vps = data[slot];
-
-      if (vps && vps.id) {
-        apiHasVps = true;
-        total++;
-
-        apiText += `  ├ Slot ${slot}\n`;
-        apiText += `  │ Name   : ${vps.name}\n`;
-        apiText += `  │ Region : ${vps.region}\n`;
-        apiText += `  │ RAM    : ${vps.ram}\n`;
-        apiText += `  │ OS     : ${vps.os}\n`;
-        apiText += `  │ Status : ${vps.status}\n\n`;
-      }
-    }
-
-    if (apiHasVps) {
-      text += apiText + `\n`;
-    }
-  }
-
-  if (total === 0) {
-    return ctx.reply("📭 Tidak ada VPS yang terdaftar.");
-  }
-
-  text += `━━━━━━━━━━━━━━\n📦 Total VPS: ${total}`;
-
-  return ctx.reply(text);
-});
-
-bot.command("statusvps", async (ctx) => {
-  const db = getVPS();
-
-  let text = `📊 STATUS VPS DIGITAL OCEAN\n\n`;
-
-  let total = 0;
-  let running = 0;
-  let off = 0;
-
-  for (let i = 1; i <= 50; i++) {
-    const api = `ApiDO${i}`;
-    const data = db[api];
-
-    if (!data) continue;
-
-    let apiHas = false;
-    let apiText = `🔹 ${api}\n`;
-
-    for (let slot = 1; slot <= 10; slot++) {
-      const vps = data[slot];
-
-      if (vps && vps.id) {
-        apiHas = true;
-        total++;
-
-        if (vps.status === "RUNNING") {
-          running++;
-          apiText += `  🟢 Slot ${slot} - ${vps.name}\n`;
-        } else {
-          off++;
-          apiText += `  🔴 Slot ${slot} - ${vps.name}\n`;
-        }
-      }
-    }
-
-    if (apiHas) {
-      text += apiText + `\n`;
-    }
-  }
-
-  text += `━━━━━━━━━━━━━━\n`;
-  text += `📦 Total VPS : ${total}\n`;
-  text += `🟢 Running   : ${running}\n`;
-  text += `🔴 OFF       : ${off}`;
-
-  return ctx.reply(text);
-});
-
-const CHECK_INTERVAL = 60000; // 60 detik
-
-function getOwners() {
-  return JSON.parse(fs.readFileSync("./database/owner.json"));
-}
-
-function getDOAPI(slot) {
-  const db = JSON.parse(fs.readFileSync("./database/doapi.json"));
-  return db[`ApiDO${slot}`];
-}
-
-// kirim notif ke semua owner
-async function notify(bot, text) {
-  const owners = getOwners();
-
-  for (let id of owners) {
-    try {
-      await bot.telegram.sendMessage(id, text);
-    } catch (e) {
-      console.log("Notif gagal ke:", id);
-    }
-  }
-}
-
-// cek status droplet
-async function checkDroplet(apiKey, dropletId) {
-  try {
-    const res = await axios.get(
-      `https://api.digitalocean.com/v2/droplets/${dropletId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${apiKey}`
-        }
-      }
-    );
-
-    return res.data.droplet.status; // active / off / error
-  } catch (e) {
-    return "error";
-  }
-}
-
-// AUTO DETECT SYSTEM
-function startAutoDetect(bot) {
-  setInterval(async () => {
     const vpsDB = getVPS();
 
+    let result = [];
+
+    // =========================
+    // CARI VPS USER DI SEMUA ApiDO
+    // =========================
     for (let i = 1; i <= 50; i++) {
-      const apiKey = getDOAPI(i);
-      if (!apiKey) continue;
+        const key = `ApiDO${i}`;
 
-      const apiName = `ApiDO${i}`;
-      const apiData = vpsDB[apiName];
+        if (!vpsDB[key] || !vpsDB[key].vps) continue;
 
-      if (!apiData) continue;
+        const userVPS = vpsDB[key].vps.filter(v => v.owner === userId);
 
-      for (let slot = 1; slot <= 10; slot++) {
-        const vps = apiData[slot];
-        if (!vps?.id) continue;
-
-        const status = await checkDroplet(apiKey, vps.id);
-
-        if (status !== "active") {
-          if (vps.status !== "OFF") {
-            vps.status = "OFF";
-
-            await notify(
-              bot,
-`🚨 VPS DOWN DETECTED
-
-🌐 API   : ${apiName}
-🔢 Slot  : ${slot}
-📛 Name  : ${vps.name}
-⚠️ Status: ${status}
-
-🔧 VPS OFF / ERROR terdeteksi`
-            );
-          }
-        } else {
-          vps.status = "RUNNING";
-        }
-      }
+        userVPS.forEach(vps => {
+            result.push({
+                api: key,
+                ...vps
+            });
+        });
     }
 
-    fs.writeFileSync("./database/vps.json", JSON.stringify(vpsDB, null, 2));
-  }, CHECK_INTERVAL);
+    if (result.length === 0) {
+        return ctx.reply("❌ Kamu belum punya VPS!");
+    }
+
+    // =========================
+    // FORMAT OUTPUT
+    // =========================
+    let text = `📋 *LIST VPS KAMU*\n\n`;
+
+    result.forEach((vps, index) => {
+        text +=
+`#${index + 1}
+🆔 ID: ${vps.dropletId}
+🖥 Hostname: ${vps.hostname}
+🌐 IP: ${vps.ip}
+🌍 Region: ${vps.region}
+💿 OS: ${vps.os}
+⚙️ Size: ${vps.size}
+📦 Api: ${vps.api}
+🔐 Status: ${vps.status}
+
+━━━━━━━━━━━━━━━
+`;
+    });
+
+    ctx.reply(text, { parse_mode: "Markdown" });
+});
+
+const fetch = require("node-fetch");
+const TelegramBot = require("node-telegram-bot-api");
+
+const bot = new TelegramBot(process.env.TOKEN, { polling: true });
+const owners = getOwnerList();
+/* =========================
+   DATABASE FUNCTION
+========================= */
+
+function getVPS() {
+    if (!fs.existsSync("./vps.json")) return {};
+    return JSON.parse(fs.readFileSync("./vps.json", "utf8"));
 }
 
-module.exports = { startAutoDetect };
+function saveVPS(data) {
+    fs.writeFileSync("./vps.json", JSON.stringify(data, null, 2));
+}
+
+function getOwnerList() {
+    if (!fs.existsSync("./database/owneruser.json")) return [];
+    return JSON.parse(fs.readFileSync("./database/owneruser.json", "utf8"));
+}
+
+/* =========================
+   AUTO MONITOR VPS DOWN
+========================= */
+
+let isMonitoring = false;
+
+async function autoDetectVPSDown() {
+    if (isMonitoring) return;
+    isMonitoring = true;
+
+    const vpsDB = getVPS();
+    const doapi = JSON.parse(fs.readFileSync("./doapi.json", "utf8"));
+    
+
+    for (let i = 1; i <= 50; i++) {
+        const key = `ApiDO${i}`;
+
+        if (!vpsDB[key]) continue;
+
+        for (let vps of vpsDB[key].vps) {
+            if (!vps.dropletId) continue;
+
+            try {
+                const apiKey = doapi[key];
+                if (!apiKey) continue;
+
+                const res = await fetch(
+                    `https://api.digitalocean.com/v2/droplets/${vps.dropletId}`,
+                    {
+                        headers: {
+                            "Authorization": `Bearer ${apiKey}`
+                        }
+                    }
+                );
+
+                let statusText = "";
+
+                if (!res.ok) {
+                    statusText = "DELETED / OFFLINE";
+                    vps.status = statusText;
+                } else {
+                    const json = await res.json();
+                    const status = json.droplet.status;
+
+                    statusText = status.toUpperCase();
+                    vps.status = statusText;
+                }
+
+                // =========================
+                // NOTIF KE OWNER (GLOBAL LIST)
+                // =========================
+                for (let ownerId of owners) {
+                    bot.sendMessage(
+                        ownerId,
+                        `🚨 VPS MONITOR
+
+🖥 Host: ${vps.hostname}
+🆔 ID: ${vps.dropletId}
+📊 Status: ${statusText}
+🌐 IP: ${vps.ip || "-"}`,
+                    ).catch(() => {});
+                }
+
+            } catch (err) {
+                vps.status = "ERROR";
+            }
+        }
+    }
+
+    saveVPS(vpsDB);
+    isMonitoring = false;
+}
+
+/* =========================
+   AUTO RUN (INI WAJIB DI BAWAH)
+========================= */
+
+setInterval(() => {
+    autoDetectVPSDown();
+}, 60 * 1000);
+
+/* =========================
+   CONTOH COMMAND (STATUS VPS)
+========================= */
+
+bot.command("statusvps", async (ctx) => {
+    const userId = ctx.from.id.toString();
+    const args = ctx.message.text.split(" ");
+
+    const dropletId = args[1];
+
+    if (!owners.includes(userId)) {
+        return ctx.reply("🚫 Kamu bukan owner!");
+    }
+
+    if (!dropletId) {
+        return ctx.reply("Format: /statusvps ID");
+    }
+
+    const vpsDB = getVPS();
+    const doapi = JSON.parse(fs.readFileSync("./doapi.json", "utf8"));
+
+    let found = null;
+    let apiKey = null;
+
+    for (let i = 1; i <= 50; i++) {
+        const key = `ApiDO${i}`;
+        if (!vpsDB[key]) continue;
+
+        const vps = vpsDB[key].vps.find(v => v.dropletId == dropletId);
+
+        if (vps) {
+            found = vps;
+            apiKey = doapi[key];
+            break;
+        }
+    }
+
+    if (!found) return ctx.reply("VPS tidak ditemukan!");
+
+    const res = await fetch(
+        `https://api.digitalocean.com/v2/droplets/${dropletId}`,
+        {
+            headers: { "Authorization": `Bearer ${apiKey}` }
+        }
+    );
+
+    const json = await res.json();
+    const status = json.droplet?.status || "unknown";
+
+    ctx.reply(
+`📡 STATUS VPS
+
+🖥 Host: ${found.hostname}
+🆔 ID: ${dropletId}
+📊 Status: ${status}
+`
+    );
+});
+
+
 
 bot.command("startvps", async (ctx) => {
-  const args = ctx.message.text.split(" ");
+    const userId = ctx.from.id.toString();
+    const args = ctx.message.text.split(" ");
 
-  const apiIndex = parseInt(args[1]);
-  const slot = parseInt(args[2]);
+    const dropletId = args[1];
 
-  if (!apiIndex || !slot) {
-    return ctx.reply("❌ Format: /startvps 1 3");
-  }
+    if (!dropletId) {
+        return ctx.reply(
+`⚠️ FORMAT SALAH
 
-  const db = getVPS();
-  const apiKey = `ApiDO${apiIndex}`;
+Gunakan:
+/startvps dropletId`
+        );
+    }
 
-  const vps = db?.[apiKey]?.[slot];
+    const vpsDB = getVPS();
+    const doapi = JSON.parse(fs.readFileSync("./doapi.json", "utf8"));    
 
-  if (!vps || Object.keys(vps).length === 0) {
-    return ctx.reply("⚠️ VPS tidak ditemukan");
-  }
+    // =========================
+    // CEK OWNER GLOBAL
+    // =========================
+    if (!owners.includes(userId)) {
+        return ctx.reply("🚫 Kamu bukan owner!");
+    }
 
-  db[apiKey][slot].status = "RUNNING";
+    let found = null;
+    let apiKey = null;
+    let apiKeyName = null;
 
-  fs.writeFileSync("./database/vps.json", JSON.stringify(db, null, 2));
+    // =========================
+    // CARI VPS
+    // =========================
+    for (let i = 1; i <= 50; i++) {
+        const key = `ApiDO${i}`;
 
-  return ctx.reply(
-`▶️ VPS STARTED
+        if (!vpsDB[key]) continue;
 
-API   : ${apiKey}
-Slot  : ${slot}
-Name  : ${vps.name}
-Status: RUNNING`
-  );
+        const vps = vpsDB[key].vps.find(v => v.dropletId == dropletId);
+
+        if (vps) {
+            found = vps;
+            apiKey = doapi[key];
+            apiKeyName = key;
+            break;
+        }
+    }
+
+    if (!found) {
+        return ctx.reply("❌ VPS tidak ditemukan!");
+    }
+
+    try {
+        // =========================
+        // START VPS DIGITALOCEAN
+        // =========================
+        const res = await fetch(
+            `https://api.digitalocean.com/v2/droplets/${dropletId}/actions`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    type: "power_on"
+                })
+            }
+        );
+
+        const json = await res.json();
+
+        if (!res.ok) {
+            return ctx.reply("❌ Gagal start VPS:\n" + JSON.stringify(json));
+        }
+
+        // =========================
+        // UPDATE STATUS DB
+        // =========================
+        found.status = "STARTING";
+
+        saveVPS(vpsDB);
+
+        ctx.reply(
+`🔼 VPS BERHASIL DI START
+
+🆔 ID: ${dropletId}
+🖥 Hostname: ${found.hostname}
+📊 Status: STARTING
+📦 API: ${apiKeyName}`
+        );
+
+    } catch (err) {
+        ctx.reply("❌ Error:\n" + err.message);
+    }
 });
 
 bot.command("stopvps", async (ctx) => {
-  const args = ctx.message.text.split(" ");
+    const userId = ctx.from.id.toString();
+    const args = ctx.message.text.split(" ");
 
-  const apiIndex = parseInt(args[1]); // 1 - 50
-  const slot = parseInt(args[2]);     // 1 - 10
+    const dropletId = args[1];
 
-  if (!apiIndex || !slot) {
-    return ctx.reply("❌ Format: /stopvps 1 3");
-  }
+    if (!dropletId) {
+        return ctx.reply(
+`⚠️ FORMAT SALAH
 
-  const db = getVPS();
-  const apiKey = `ApiDO${apiIndex}`;
+Gunakan:
+/stopvps dropletId`
+        );
+    }
 
-  const vps = db?.[apiKey]?.[slot];
+    const vpsDB = getVPS();
+    const doapi = JSON.parse(fs.readFileSync("./doapi.json", "utf8"));
+    // =========================
+    // CEK OWNER GLOBAL
+    // =========================
+    if (!owners.includes(userId)) {
+        return ctx.reply("🚫 Kamu bukan owner!");
+    }
 
-  if (!vps || Object.keys(vps).length === 0) {
-    return ctx.reply("⚠️ VPS tidak ditemukan");
-  }
+    let found = null;
+    let apiKey = null;
+    let apiKeyName = null;
 
-  db[apiKey][slot].status = "STOPPED";
+    // =========================
+    // CARI VPS DI DATABASE
+    // =========================
+    for (let i = 1; i <= 50; i++) {
+        const key = `ApiDO${i}`;
 
-  fs.writeFileSync("./database/vps.json", JSON.stringify(db, null, 2));
+        if (!vpsDB[key]) continue;
 
-  return ctx.reply(
-`⛔ VPS STOPPED
+        const vps = vpsDB[key].vps.find(v => v.dropletId == dropletId);
 
-API   : ${apiKey}
-Slot  : ${slot}
-Name  : ${vps.name}
-Status: STOPPED`
-  );
+        if (vps) {
+            found = vps;
+            apiKey = doapi[key];
+            apiKeyName = key;
+            break;
+        }
+    }
+
+    if (!found) {
+        return ctx.reply("❌ VPS tidak ditemukan!");
+    }
+
+    try {
+        // =========================
+        // STOP VPS DIGITALOCEAN
+        // =========================
+        const res = await fetch(
+            `https://api.digitalocean.com/v2/droplets/${dropletId}/actions`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    type: "power_off"
+                })
+            }
+        );
+
+        const json = await res.json();
+
+        if (!res.ok) {
+            return ctx.reply("❌ Gagal stop VPS:\n" + JSON.stringify(json));
+        }
+
+        // =========================
+        // UPDATE DATABASE
+        // =========================
+        found.status = "STOPPING";
+
+        saveVPS(vpsDB);
+
+        ctx.reply(
+`🔽 VPS BERHASIL DI STOP
+
+🆔 ID: ${dropletId}
+🖥 Hostname: ${found.hostname}
+📊 Status: STOPPING
+📦 API: ${apiKeyName}`
+        );
+
+    } catch (err) {
+        ctx.reply("❌ Error:\n" + err.message);
+    }
 });
-
-function saveVPS(data) {
-  fs.writeFileSync("./database/vps.json", JSON.stringify(data, null, 2));
-}
 
 bot.command("rebuildvps", async (ctx) => {
-  const args = ctx.message.text.split(" ");
+    const userId = ctx.from.id.toString();
+    const args = ctx.message.text.split(" ");
 
-  const apiIndex = parseInt(args[1]); // 1 - 50
-  const slot = parseInt(args[2]);     // 1 - 10
+    const dropletId = args[1];
+    const image = args[2]; // optional OS baru
 
-  if (!apiIndex || !slot) {
-    return ctx.reply("❌ Format: /rebuildvps 1 3");
-  }
+    if (!dropletId) {
+        return ctx.reply(
+`⚠️ FORMAT SALAH
 
-  const db = getVPS();
-  const apiKey = `ApiDO${apiIndex}`;
+Gunakan:
+/rebuildvps dropletId [optional:image]
 
-  const vps = db?.[apiKey]?.[slot];
-
-  if (!vps || Object.keys(vps).length === 0) {
-    return ctx.reply("⚠️ VPS tidak ditemukan");
-  }
-
-  // status rebuild
-  db[apiKey][slot].status = "REBUILDING";
-  saveVPS(db);
-
-  await ctx.reply(
-`🔁 REBUILD STARTED
-
-API   : ${apiKey}
-Slot  : ${slot}
-Name  : ${vps.name}
-Status: REBUILDING`
-  );
-
-  // simulasi rebuild delay (biar realistis)
-  setTimeout(() => {
-    const db2 = getVPS();
-
-    if (db2?.[apiKey]?.[slot]) {
-      db2[apiKey][slot].status = "RUNNING";
-      db2[apiKey][slot].rebuild_at = new Date().toISOString();
-      saveVPS(db2);
+Contoh:
+/rebuildvps 123456789 ubuntu-22-04-x64`
+        );
     }
-  }, 5000);
+
+    const vpsDB = getVPS();
+    const doapi = JSON.parse(fs.readFileSync("./doapi.json", "utf8"));
+
+    // =========================
+    // CEK OWNER GLOBAL
+    // =========================
+    if (!owners.includes(userId)) {
+        return ctx.reply("🚫 Kamu bukan owner!");
+    }
+
+    let found = null;
+    let apiKey = null;
+    let apiKeyName = null;
+
+    // =========================
+    // CARI VPS
+    // =========================
+    for (let i = 1; i <= 50; i++) {
+        const key = `ApiDO${i}`;
+
+        if (!vpsDB[key]) continue;
+
+        const vps = vpsDB[key].vps.find(v => v.dropletId == dropletId);
+
+        if (vps) {
+            found = vps;
+            apiKey = doapi[key];
+            apiKeyName = key;
+            break;
+        }
+    }
+
+    if (!found) {
+        return ctx.reply("❌ VPS tidak ditemukan!");
+    }
+
+    try {
+        // =========================
+        // IMAGE DEFAULT (PAKAI VPS ASLI JIKA TIDAK DIISI)
+        // =========================
+        const rebuildImage = image || found.os || "ubuntu-22-04-x64";
+
+        // =========================
+        // REBUILD VPS DIGITALOCEAN
+        // =========================
+        const res = await fetch(
+            `https://api.digitalocean.com/v2/droplets/${dropletId}/actions`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    type: "rebuild",
+                    image: rebuildImage
+                })
+            }
+        );
+
+        const json = await res.json();
+
+        if (!res.ok) {
+            return ctx.reply("❌ Gagal rebuild VPS:\n" + JSON.stringify(json));
+        }
+
+        // =========================
+        // UPDATE DATABASE
+        // =========================
+        found.status = "REBUILDING";
+        found.os = rebuildImage;
+
+        saveVPS(vpsDB);
+
+        ctx.reply(
+`🔄 VPS SEDANG REBUILD
+
+🆔 ID: ${dropletId}
+🖥 Hostname: ${found.hostname}
+💿 OS: ${rebuildImage}
+📊 Status: REBUILDING
+📦 API: ${apiKeyName}
+
+⚠️ Proses bisa 3–10 menit`
+        );
+
+    } catch (err) {
+        ctx.reply("❌ Error:\n" + err.message);
+    }
 });
 
-bot.command("statusdo", async (ctx) => {
-  const args = ctx.message.text.split(" ");
-  const apiIndex = parseInt(args[1]); // optional
+async function checkDOAndAlert() {
+    const doapi = JSON.parse(fs.readFileSync("./doapi.json", "utf8"));
 
-  const db = getVPS();
+    for (let i = 1; i <= 50; i++) {
+        const key = `ApiDO${i}`;
+        const apiKey = doapi[key];
 
-  let text = `📡 DIGITAL OCEAN STATUS REPORT\n\n`;
+        if (!apiKey) continue;
 
-  let total = 0;
-  let running = 0;
-  let stopped = 0;
-  let rebuilding = 0;
+        try {
+            const res = await fetch("https://api.digitalocean.com/v2/account", {
+                headers: {
+                    "Authorization": `Bearer ${apiKey}`
+                }
+            });
 
-  const start = apiIndex || 1;
-  const end = apiIndex || 50;
+            let statusMsg = "";
 
-  for (let i = start; i <= end; i++) {
-    const apiKey = `ApiDO${i}`;
-    const data = db[apiKey];
+            // =========================
+            // API ERROR / LIMIT
+            // =========================
+            if (!res.ok) {
+                statusMsg = `🚨 *ALERT DIGITALOCEAN*
 
-    if (!data) continue;
+❌ ${key} bermasalah!
+Status: INVALID / SUSPENDED / LIMIT
 
-    let apiText = `🔹 ${apiKey}\n`;
-    let hasVps = false;
+⚠️ Segera cek API sebelum VPS gagal dibuat.`;
 
-    for (let slot = 1; slot <= 10; slot++) {
-      const vps = data[slot];
+                // kirim ke semua owner
+                for (let ownerId of owners) {
+                    bot.sendMessage(ownerId, statusMsg, {
+                        parse_mode: "Markdown"
+                    }).catch(() => {});
+                }
 
-      if (vps && vps.id) {
-        hasVps = true;
-        total++;
+                continue;
+            }
 
-        let status = vps.status || "UNKNOWN";
+            // =========================
+            // SUCCESS CHECK
+            // =========================
+            const data = await res.json();
 
-        if (status === "RUNNING") running++;
-        else if (status === "STOPPED") stopped++;
-        else if (status === "REBUILDING") rebuilding++;
+            // optional: bisa deteksi limit dari metadata (kalau mau upgrade)
+            const remaining = res.headers.get("ratelimit-remaining");
 
-        apiText += `  • Slot ${slot} : ${vps.name}\n`;
-        apiText += `    Status   : ${status}\n`;
-        apiText += `    RAM      : ${vps.ram}\n\n`;
-      }
+            if (remaining && Number(remaining) < 20) {
+                statusMsg = `⚠️ *WARNING DIGITALOCEAN*
+
+🟡 ${key} hampir LIMIT
+Remaining API: ${remaining}
+
+⚠️ Harap kurangi request VPS atau pindah akun DO`;
+
+                for (let ownerId of owners) {
+                    bot.sendMessage(ownerId, statusMsg, {
+                        parse_mode: "Markdown"
+                    }).catch(() => {});
+                }
+            }
+
+        } catch (err) {
+            for (let ownerId of owners) {
+                bot.sendMessage(
+                    ownerId,
+                    `🚨 ERROR DO CHECK
+
+🔴 ${key}
+❌ ${err.message}`
+                ).catch(() => {});
+            }
+        }
+    }
+}
+// =========================
+// AUTO RUN (WAJIB PALING BAWAH)
+// =========================
+setInterval(() => {
+    checkDOAndAlert();
+}, 5 * 60 * 1000);
+
+bot.command("cekdo", async (ctx) => {
+    const userId = ctx.from.id.toString();
+
+    // =========================
+    // CEK OWNER
+    // =========================
+    if (!owners.includes(userId)) {
+        return ctx.reply("🚫 Kamu bukan owner!");
     }
 
-    if (hasVps) {
-      text += apiText + "\n";
+    const doapi = JSON.parse(fs.readFileSync("./doapi.json", "utf8"));
+
+    await ctx.reply("🔍 Mengecek semua DigitalOcean API...");
+
+    let report = `📊 *DIGITALOCEAN CHECK REPORT*\n\n`;
+
+    for (let i = 1; i <= 50; i++) {
+        const key = `ApiDO${i}`;
+        const apiKey = doapi[key];
+
+        if (!apiKey) {
+            report += `❌ ${key}: NOT SET\n`;
+            continue;
+        }
+
+        try {
+            const res = await fetch("https://api.digitalocean.com/v2/account", {
+                headers: {
+                    "Authorization": `Bearer ${apiKey}`
+                }
+            });
+
+            if (!res.ok) {
+                report += `🚨 ${key}: ERROR / LIMIT / SUSPENDED\n`;
+                continue;
+            }
+
+            const data = await res.json();
+
+            report += `🟢 ${key}: OK\n`;
+
+        } catch (err) {
+            report += `⚠️ ${key}: NETWORK ERROR\n`;
+        }
     }
-  }
 
-  if (total === 0) {
-    return ctx.reply("📭 Tidak ada VPS aktif");
-  }
+    ctx.reply(report, { parse_mode: "Markdown" });
 
-  text += `━━━━━━━━━━━━━━\n`;
-  text += `📦 TOTAL VPS : ${total}\n`;
-  text += `🟢 RUNNING   : ${running}\n`;
-  text += `🔴 STOPPED   : ${stopped}\n`;
-  text += `🟡 REBUILD   : ${rebuilding}`;
-
-  return ctx.reply(text);
+    // =========================
+    // AUTO ALERT KE OWNER JUGA
+    // =========================
+    for (let ownerId of owners) {
+        ctx.telegram.sendMessage(
+            ownerId,
+            "📢 CHECKDO selesai dijalankan oleh system.\nCek hasil di bot atau chat ini."
+        ).catch(() => {});
+    }
 });
 
 //install panel
