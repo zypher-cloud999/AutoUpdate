@@ -5849,18 +5849,6 @@ function addVPS(apiIndex, vpsData) {
     return true;
 }
 
-const result = addVPS(index, {
-    dropletId,
-    owner: userId,
-    hostname,
-    ip,
-    region,
-    os,
-    size,
-    status: "active",
-    createdAt: new Date().toLocaleString("id-ID")
-});
-
 if (result === "FULL") {
     return bot.sendMessage(chatId, "❌ Slot VPS sudah penuh (max 10)");
 }
@@ -5910,81 +5898,30 @@ bot.command("createvps", async (ctx) => {
     const args = ctx.message.text.split(" ");
 
     // =========================
-    // MODE HELP (kalau tidak lengkap)
+    // HELP
     // =========================
     if (!args[1] || args[1] === "help") {
-        return ctx.reply(
-`🚀 *CREATE VPS SYSTEM*
-
-📌 Format:
-\`/createvps hostname region os size\`
-
-━━━━━━━━━━━━━━
-🌍 *REGION LIST*
-sgp1 = Singapore 1
-sgp2 = Singapore 2
-nyc1 = New York 1
-nyc3 = New York 3
-sfo1 = San Francisco 1
-sfo3 = San Francisco 3
-ams3 = Amsterdam 3
-fra1 = Frankfurt 1
-lon1 = London 1
-tor1 = Toronto 1
-blr1 = Bangalore 1
-syd1 = Sydney 1
-
-━━━━━━━━━━━━━━
-💿 *OS LIST*
-ubuntu-20-04-x64
-ubuntu-22-04-x64
-ubuntu-24-04-x64
-debian-11-x64
-debian-12-x64
-centos-stream-9-x64
-rockylinux-9-x64
-almalinux-9-x64
-fedora-39-x64
-
-━━━━━━━━━━━━━━
-⚙️ *SIZE LIST*
-s-1vcpu-1gb   = 1GB / 1CPU
-s-1vcpu-2gb   = 2GB / 1CPU
-s-2vcpu-2gb   = 2GB / 2CPU
-s-2vcpu-4gb   = 4GB / 2CPU
-s-4vcpu-8gb   = 8GB / 4CPU
-s-4vcpu-16gb  = 16GB / 4CPU
-s-8vcpu-16gb  = 16GB / 8CPU
-s-8vcpu-32gb  = 32GB / 8CPU
-
-━━━━━━━━━━━━━━
-📌 *Contoh*
-\`/createvps myserver sgp1 ubuntu-22-04-x64 s-1vcpu-1gb\`
-`,
-            { parse_mode: "Markdown" }
-        );
+        return ctx.reply("Gunakan: /createvps hostname region os size");
     }
 
-    // =========================
-    // INPUT USER
-    // =========================
     const hostname = args[1];
     const region = args[2];
     const os = args[3];
     const size = args[4];
 
     if (!hostname || !region || !os || !size) {
-        return ctx.reply("⚠️ Format salah. Ketik /createvps help untuk lihat list.");
+        return ctx.reply("⚠️ Format salah. /createvps help");
     }
 
     const doapi = JSON.parse(fs.readFileSync("./doapi.json", "utf8"));
     const vpsDB = getVPS();
 
     // =========================
-    // AUTO PILIH API DO (10 SLOT)
+    // AUTO PILIH API DO (MAX 10 VPS)
     // =========================
-    let selectedKey = null;
+    let apiIndex = null;
     let apiKey = null;
+    let selectedKey = null;
 
     for (let i = 1; i <= 50; i++) {
         const key = `ApiDO${i}`;
@@ -5995,22 +5932,23 @@ s-8vcpu-32gb  = 32GB / 8CPU
         if (!vpsDB[key]) vpsDB[key] = { vps: [] };
 
         if (vpsDB[key].vps.length < 10) {
-            selectedKey = key;
+            apiIndex = i;
             apiKey = api;
+            selectedKey = key;
             break;
         }
     }
 
-    if (!selectedKey) {
-        return ctx.reply("❌ Semua ApiDO sudah penuh (max 10 VPS per API)");
+    if (!apiKey) {
+        return ctx.reply("❌ Semua ApiDO penuh");
     }
 
     const password = "VPS" + Math.random().toString(36).slice(2, 10);
 
-    // =========================
-    // CREATE VPS DIGITALOCEAN
-    // =========================
     try {
+        // =========================
+        // CREATE VPS DO
+        // =========================
         const res = await fetch("https://api.digitalocean.com/v2/droplets", {
             method: "POST",
             headers: {
@@ -6019,8 +5957,8 @@ s-8vcpu-32gb  = 32GB / 8CPU
             },
             body: JSON.stringify({
                 name: hostname,
-                region: region,
-                size: size,
+                region,
+                size,
                 image: os,
                 ipv6: true,
                 backups: false,
@@ -6038,25 +5976,25 @@ chpasswd: { expire: False }`
 
         const dropletId = json.droplet.id;
 
+        // =========================
+        // WAIT BOOT VPS
+        // =========================
         await new Promise(r => setTimeout(r, 50000));
 
-        const info = await fetch(
-            `https://api.digitalocean.com/v2/droplets/${dropletId}`,
-            {
-                headers: {
-                    "Authorization": `Bearer ${apiKey}`
-                }
+        const info = await fetch(`https://api.digitalocean.com/v2/droplets/${dropletId}`, {
+            headers: {
+                "Authorization": `Bearer ${apiKey}`
             }
-        );
+        });
 
         const data = await info.json();
 
-        const ip = data?.droplet?.networks?.v4?.[0]?.ip_address || "N/A";
+        const ip = data?.droplet?.networks?.v4?.find(v => v.type === "public")?.ip_address || "N/A";
 
         // =========================
-        // SIMPAN VPS
+        // 🔥 INI POSISI ADDVPS YANG BENAR
         // =========================
-        vpsDB[selectedKey].vps.push({
+        const result = addVPS(apiIndex, {
             dropletId,
             owner: userId,
             hostname,
@@ -6069,12 +6007,20 @@ chpasswd: { expire: False }`
             createdAt: new Date().toLocaleString("id-ID")
         });
 
+        if (result === "FULL") {
+            return ctx.reply("❌ Slot API ini sudah penuh (10 VPS)");
+        }
+
+        if (result === "INVALID") {
+            return ctx.reply("❌ API Index tidak valid");
+        }
+
         saveVPS(vpsDB);
 
         // =========================
-        // RESPONSE
+        // RESPONSE FINAL
         // =========================
-        ctx.reply(
+        return ctx.reply(
 `✅ VPS BERHASIL DIBUAT
 
 🆔 ID: ${dropletId}
@@ -6084,11 +6030,11 @@ chpasswd: { expire: False }`
 💿 OS: ${os}
 ⚙️ Size: ${size}
 🔐 Password: ${password}
-📦 Slot: ${selectedKey}`
+📦 ApiDO: ApiDO${apiIndex}`
         );
 
     } catch (err) {
-        ctx.reply("❌ Error:\n" + err.message);
+        return ctx.reply("❌ Error:\n" + err.message);
     }
 });
 
@@ -6245,7 +6191,6 @@ bot.command("listvps", async (ctx) => {
 const fetch = require("node-fetch");
 const TelegramBot = require("node-telegram-bot-api");
 
-const bot = new TelegramBot(process.env.TOKEN, { polling: true });
 const owners = getOwnerList();
 /* =========================
    DATABASE FUNCTION
