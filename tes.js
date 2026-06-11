@@ -5849,10 +5849,6 @@ function addVPS(apiIndex, vpsData) {
     return true;
 }
 
-if (result === "FULL") {
-    return bot.sendMessage(chatId, "❌ Slot VPS sudah penuh (max 10)");
-}
-
 const regions = [
   { name: "Singapore 1", slug: "sgp1" },
   { name: "Singapore 2", slug: "sgp1" },
