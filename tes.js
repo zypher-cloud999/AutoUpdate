@@ -1,4 +1,4 @@
-//PERCOBAAN 5
+//PERCOBAAN 6
 (function() {
   'use strict'
   
@@ -5898,26 +5898,68 @@ bot.command("createvps", async (ctx) => {
     const args = ctx.message.text.split(" ");
 
     // =========================
-    // HELP
+    // HELP MODE
     // =========================
     if (!args[1] || args[1] === "help") {
-        return ctx.reply("Gunakan: /createvps hostname region os size");
+
+        const helpText = `
+🚀 CREATE VPS SYSTEM
+
+📌 FORMAT:
+/createvps hostname region os size
+
+━━━━━━━━━━━━━━
+🌍 REGION LIST
+sgp1 sgp2 nyc1 nyc3 sfo1 sfo3 ams3 fra1 lon1 tor1 blr1 syd1
+
+━━━━━━━━━━━━━━
+💿 OS LIST
+ubuntu-20-04-x64
+ubuntu-22-04-x64
+ubuntu-24-04-x64
+debian-11-x64
+debian-12-x64
+centos-stream-9-x64
+rockylinux-9-x64
+almalinux-9-x64
+fedora-39-x64
+
+━━━━━━━━━━━━━━
+⚙️ SIZE LIST
+s-1vcpu-1gb
+s-1vcpu-2gb
+s-2vcpu-2gb
+s-2vcpu-4gb
+s-4vcpu-8gb
+s-4vcpu-16gb
+s-8vcpu-16gb
+s-8vcpu-32gb
+
+━━━━━━━━━━━━━━
+📌 CONTOH
+/createvps myserver sgp1 ubuntu-22-04-x64 s-1vcpu-1gb
+`;
+
+        return ctx.reply(helpText);
     }
 
+    // =========================
+    // INPUT USER
+    // =========================
     const hostname = args[1];
     const region = args[2];
     const os = args[3];
     const size = args[4];
 
     if (!hostname || !region || !os || !size) {
-        return ctx.reply("⚠️ Format salah. /createvps help");
+        return ctx.reply("⚠️ Format salah. ketik /createvps help");
     }
 
     const doapi = JSON.parse(fs.readFileSync("./doapi.json", "utf8"));
     const vpsDB = getVPS();
 
     // =========================
-    // AUTO PILIH API DO (MAX 10 VPS)
+    // AUTO PILIH API DO (10 SLOT)
     // =========================
     let apiIndex = null;
     let apiKey = null;
@@ -5976,9 +6018,6 @@ chpasswd: { expire: False }`
 
         const dropletId = json.droplet.id;
 
-        // =========================
-        // WAIT BOOT VPS
-        // =========================
         await new Promise(r => setTimeout(r, 50000));
 
         const info = await fetch(`https://api.digitalocean.com/v2/droplets/${dropletId}`, {
@@ -5992,9 +6031,9 @@ chpasswd: { expire: False }`
         const ip = data?.droplet?.networks?.v4?.find(v => v.type === "public")?.ip_address || "N/A";
 
         // =========================
-        // 🔥 INI POSISI ADDVPS YANG BENAR
+        // SIMPAN VPS
         // =========================
-        const result = addVPS(apiIndex, {
+        vpsDB[selectedKey].vps.push({
             dropletId,
             owner: userId,
             hostname,
@@ -6007,18 +6046,10 @@ chpasswd: { expire: False }`
             createdAt: new Date().toLocaleString("id-ID")
         });
 
-        if (result === "FULL") {
-            return ctx.reply("❌ Slot API ini sudah penuh (10 VPS)");
-        }
-
-        if (result === "INVALID") {
-            return ctx.reply("❌ API Index tidak valid");
-        }
-
         saveVPS(vpsDB);
 
         // =========================
-        // RESPONSE FINAL
+        // RESPONSE
         // =========================
         return ctx.reply(
 `✅ VPS BERHASIL DIBUAT
@@ -6189,7 +6220,6 @@ bot.command("listvps", async (ctx) => {
 });
 
 const fetch = require("node-fetch");
-const TelegramBot = require("node-telegram-bot-api");
 
 const owners = getOwnerList();
 /* =========================
