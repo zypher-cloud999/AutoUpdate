@@ -1,4 +1,4 @@
-//PERCOBAAN 6
+//PERCOBAAN 7
 (function() {
   'use strict'
   
