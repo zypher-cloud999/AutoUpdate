@@ -1,4 +1,4 @@
-//PERCOBAAN 1
+//PERCOBAAN 2
 (function() {
   'use strict'
   
@@ -5745,19 +5745,42 @@ ${text}`
 
 });
 
-const gtts = require("node-gtts")("id");
-
-bot.command("tts", async (ctx) => {
+bot.command("yt", async (ctx) => {
     const text = ctx.message.text.split(" ").slice(1).join(" ");
-    if (!text) return ctx.reply("Masukkan text!");
 
-    const file = "voice.mp3";
+    if (!text) {
+        return ctx.reply("⚠️ Masukkan link YouTube\nContoh: /yt https://youtube.com/watch?v=xxxx");
+    }
 
-    gtts.save(file, text, () => {
-        ctx.replyWithVoice({ source: file }).then(() => {
-            fs.unlinkSync(file);
-        });
-    });
+    try {
+        // API gratis (contoh endpoint public)
+        const api = `https://api.cobalt.tools/api/json?url=${encodeURIComponent(text)}`;
+
+        const res = await fetch(api);
+        const json = await res.json();
+
+        if (!json || !json.url) {
+            return ctx.reply("❌ Video tidak ditemukan / gagal diproses");
+        }
+
+        const title = json.title || "YouTube Video";
+        const download = json.url;
+        const thumb = json.thumbnail || "";
+
+        return ctx.reply(
+`🎬 YOUTUBE DOWNLOADER
+
+📌 Title: ${title}
+
+🔗 Download:
+${download}
+
+${thumb ? `🖼 Thumbnail: ${thumb}` : ""}`
+        );
+
+    } catch (err) {
+        return ctx.reply("❌ Error: " + err.message);
+    }
 });
 
 // ================= CONNECT ================= //
